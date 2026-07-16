@@ -8,8 +8,9 @@ import { sendMessageAPI } from "../services/api";
 const ChatLayout = () => {
 
     const [messages, setMessages] = useState<Message[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
 
-    const sendMessage = (message: string) => {
+    const sendMessage = async (message: string) => {
         const newMessage: Message = {
             id: crypto.randomUUID(), // Generates a safe, unique string ID
             text: message,
@@ -17,9 +18,13 @@ const ChatLayout = () => {
         };
         setMessages(prevMessages => [...prevMessages, newMessage]);
 
-        const aiResponse = sendMessageAPI(message);
-        
+        setIsLoading(true);
+
+        await new Promise((resolve) => setTimeout(resolve, 700));
+
+        const aiResponse = await sendMessageAPI(message);
         setMessages(prevMessages => [...prevMessages, aiResponse]);
+        setIsLoading(false);
     };
 
 
@@ -28,7 +33,7 @@ const ChatLayout = () => {
             <div className="w-96 h-96 border border-slate-300 rounded-md flex flex-col ">
                 <Header />
                 <main>
-                    <Conversation items={messages} />
+                    <Conversation items={messages} isLoading={isLoading} />
                 </main>
                 <Footer onSend={sendMessage} />
             </div>

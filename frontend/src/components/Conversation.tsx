@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { Message } from "./types";
 
-function Conversation({ items }: { items: Message[] }) {
+function Conversation({ items, isLoading, }: { items: Message[], isLoading: boolean }) {
     const latestMsgRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
@@ -20,6 +20,13 @@ function Conversation({ items }: { items: Message[] }) {
                     </div>
                 );
             })}
+            {isLoading && (
+                <div className="flex flex-col items-start max-w-[85%]">
+                    <div className="text-sm p-3 rounded-lg my-1 bg-gray-200 text-gray-800">
+                        Generating response...
+                    </div>
+                </div>
+            )}
             <div ref={latestMsgRef} />
         </div>
     );
