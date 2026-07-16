@@ -1,0 +1,39 @@
+<!doctype html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <title>Chat UI</title>
+</head>
+
+<body class="flex justify-center h-screen bg-slate-100">
+    <div class="w-96 h-96 border border-slate-300 rounded-md flex flex-col ">
+        <!-- header-->
+        <div class="bg-sky-700 h-10 flex items-center">
+            <div class="flex items-center gap-2 text-xl font-bold text-white px-2">
+                <img class="w-6 h-6" src=" ../frontend/assets/chat-icon.png " />
+                <a href="#">
+                    AI Chatbot
+                </a>
+            </div>
+        </div>
+        <!-- conversation-->
+        <div class="w-full h-60 overflow-y-auto p-3 flex flex-col gap-2">
+            <div class="flex flex-col items-end max-w-[85%] ml-auto">
+                <div class="text-sm"> Hello! How can I help you today?</div>
+            </div>
+            <div class="flex flex-col items-start max-w-[85%]">
+                <div class="text-sm"> Hi, I need help with my scrollable fixed-width div layout in Tailwind. </div>
+            </div>
+        </div>
+        <!-- footer-->
+        <div class="p-2">
+            <input
+                class="block bg-white w-full border border-slate-300 rounded-md placeholder:italic placeholder:text-slate-400 p-2"
+                placeholder="ask anything" type="text" name="input">
+        </div>
+    </div>
+</body>
+
+</html>
