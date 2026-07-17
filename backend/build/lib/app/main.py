@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api import chat
-import logging
 
 app = FastAPI(title="AI Chatbot API", description="API for AI Chatbot", version="1.0.0")
 app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
@@ -19,11 +18,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
 @app.get("/")
 async def root():
-    logging
     return {"message": "Chat API is running. Use the /chat endpoint to send messages."}
  

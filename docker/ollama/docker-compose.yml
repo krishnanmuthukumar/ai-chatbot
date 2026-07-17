@@ -1,0 +1,26 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+  ollama-pull-model:
+    image: curlimages/curl:latest
+    container_name: ollama-pull-model
+    depends_on:
+      - ollama
+    entrypoint:
+      [
+        "sh",
+        "-c",
+        "sleep 5 && curl -X POST http://ollama:11434/api/pull -d '{\"name\": \"phi4-mini\"}'",
+      ]
+volumes:
+  ollama_data:
+networks:
+  default:
+    name: ai-network
+    driver: bridge

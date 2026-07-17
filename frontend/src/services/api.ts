@@ -7,7 +7,8 @@ export const sendMessageAPI = async (input: string): Promise<Message> => {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ message: input })
+            body: JSON.stringify({ message: input }),
+            signal: AbortSignal.timeout(180000)
         });
 
         if (!response.ok) {
@@ -15,7 +16,7 @@ export const sendMessageAPI = async (input: string): Promise<Message> => {
         }
 
         const data = await response.json();
-        const responseText = typeof data?.response === 'string' ? data.response : 'No response received.';
+        const responseText = typeof data === 'string' ? data : 'No response received.';
 
         return {
             id: crypto.randomUUID(), // Generates a safe, unique string ID

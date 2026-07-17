@@ -4,4 +4,7 @@ version = "0.1.0"
 requires-python = ">=3.10"
 dependencies = [
     "fastapi[standard]>=0.139.1",
+    "httpx>=0.28.0",
+    "pydantic-settings>=2.3.0",
+    "uvicorn>=0.30.0",
 ]

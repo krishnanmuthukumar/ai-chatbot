@@ -22,7 +22,7 @@ function Conversation({ items, isLoading, }: { items: Message[], isLoading: bool
             })}
             {isLoading && (
                 <div className="flex flex-col items-start max-w-[85%]">
-                    <div className="text-sm p-3 rounded-lg my-1 bg-gray-200 text-gray-800">
+                    <div className="text-sm p-3 rounded-lg my-1 bg-gray-200 text-gray-800 animate-pulse">
                         Generating response...
                     </div>
                 </div>
