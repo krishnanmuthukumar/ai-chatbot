@@ -1,6 +1,7 @@
 from fastapi import HTTPException, status
 import httpx
 import logging
+import json
 
 from app.config import Settings
 
@@ -18,20 +19,50 @@ class ChatRequest:
                 logger.info(
                     f"Sending request to model API at {self.settings.MODEL_API_URL} with model {self.settings.MODEL_NAME}"
                 )
-                response = await client.post(
+                # Use an explicit streaming request so we can consume newline-delimited
+                # JSON objects from the model API as they arrive.
+                async with client.stream(
+                    "POST",
                     f"{self.settings.MODEL_API_URL}/api/chat",
                     json={
                         "model": self.settings.MODEL_NAME,
-                        "messages": [
-                            {"role": "user", "content": self.message}
-                        ],
-                        "stream": False,
+                        "messages": [{"role": "user", "content": self.message}],
+                        "stream": True,
                     },
                     timeout=60.0,
-                )
-                response.raise_for_status()
-                data = response.json()
-                return data["message"]["content"]
+                ) as response:
+                    response.raise_for_status()
+                    textresponse = ""
+                    # aiter_lines yields decoded text lines (one per newline)
+                    async for raw_line in response.aiter_lines():
+                        if not raw_line:
+                            continue
+                        line = raw_line.strip()
+                        # Expect each line to be a JSON object; parse it into a Python dict
+                        try:
+                            obj = json.loads(line)
+                        except json.JSONDecodeError:
+                            logger.info(f"Received non-JSON line from model API: {line}")
+                            continue
+
+                        # Server may signal completion with a field like `done`.
+                        if obj.get("done") is True:
+                            logger.info("Model API response stream completed.")
+                            break
+
+                        # Append partial content if present (adjust keys to your API shape)
+                        content = None
+                        if isinstance(obj.get("message"), dict):
+                            content = obj["message"].get("content")
+                        else:
+                            content = obj.get("content")
+
+                        if content:
+                            logger.debug(f"Received line from model API: {content}")
+                            textresponse += content
+
+                    return textresponse
+            
             except httpx.HTTPStatusError as exc:
                 raise HTTPException(
                     status_code=exc.response.status_code,
