@@ -2,8 +2,18 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api import chat
 import logging
+from contextlib import asynccontextmanager
+from app.db.database import init_db, close_db_connection
 
-app = FastAPI(title="AI Chatbot API", description="API for AI Chatbot", version="1.0.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Initialize the database connection when the app starts
+    init_db()
+    yield
+    # Close the database connection when the app shuts down
+    close_db_connection()
+
+app = FastAPI(title="AI Chatbot API", description="API for AI Chatbot", version="1.0.0", lifespan=lifespan)
 app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
 
 origins = [

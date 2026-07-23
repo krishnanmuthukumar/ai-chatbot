@@ -2,6 +2,7 @@ from fastapi import HTTPException, status
 import httpx
 import logging
 import json
+import app.db.database as db
 
 from app.config import Settings
 
@@ -9,11 +10,43 @@ logger = logging.getLogger(__name__)
 
 
 class ChatRequest:
-    def __init__(self, message: str, settings: Settings):
+    def __init__(self, message: str, conversation_id: int | None, settings: Settings):
         self.message = message
+        self.conversation_id = conversation_id
         self.settings = settings
 
+    def insert_message(self):
+        conn = db.get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO messages (content, conversation_id) VALUES (?, ?)",
+            (self.message, self.conversation_id)
+        )
+        conn.commit()
+
+    def create_conversation(self):
+        conn = db.get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO conversations (user_id) VALUES (?)",
+            (1,)  # Assuming a default user_id for demonstration
+        )
+        conn.commit()
+    
+    def get_last_conversation_id(self):
+        conn = db.get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT last_insert_rowid()")
+        return cursor.fetchone()[0]
+    
     async def getModelResponse(self) -> str:
+        if not self.conversation_id:
+            self.create_conversation()
+            self.conversation_id = self.get_last_conversation_id()
+       
+        if self.conversation_id:
+            self.insert_message()      
+
         async with httpx.AsyncClient() as client:
             try:
                 logger.info(
@@ -26,7 +59,7 @@ class ChatRequest:
                     f"{self.settings.MODEL_API_URL}/api/chat",
                     json={
                         "model": self.settings.MODEL_NAME,
-                        "messages": [{"role": "user", "content": self.message}],
+                        "messages": [{"role": "user", "content": self.message}, {"role": "system", "content": "You are a helpful assistant."}],
                         "stream": True,
                     },
                     timeout=60.0,
@@ -60,7 +93,8 @@ class ChatRequest:
                         if content:
                             logger.debug(f"Received line from model API: {content}")
                             textresponse += content
-
+                    self.message = textresponse  # Update the message with the model's response
+                    self.insert_message()  # Store the model's response in the database
                     return textresponse
             
             except httpx.HTTPStatusError as exc:
