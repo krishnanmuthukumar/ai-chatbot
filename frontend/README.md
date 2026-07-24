@@ -1,75 +1,49 @@
-# React + TypeScript + Vite
+# Frontend Overview
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This frontend provides the user-facing chat experience for the AI chatbot application. It is built with React, TypeScript, and Vite, and is designed to send user prompts to the backend API and display the chatbot response in a conversational layout.
 
-Currently, two official plugins are available:
+## What the frontend does
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+The current interface includes:
 
-## React Compiler
+- a chat header with the application branding
+- a conversation area for user and AI messages
+- message bubbles with distinct styling for each sender
+- a loading state while the backend is generating a response
+- auto-scrolling to the latest message in the conversation
+- a footer input area for sending new prompts
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Main application flow
 
-## Expanding the ESLint configuration
+1. A user types a message in the input area.
+2. The frontend appends the user message to the conversation.
+3. The message is sent to the backend endpoint at `/api/chat/message`.
+4. The backend returns an AI-generated response.
+5. The frontend renders the assistant reply and updates the chat view.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Key frontend files
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- `src/App.tsx` — application entrypoint
+- `src/components/ChatLayout.tsx` — orchestrates message state and API calls
+- `src/components/Conversation.tsx` — renders the conversation list and loading indicator
+- `src/components/Header.tsx` — top branding area
+- `src/components/Footer.tsx` — input and send controls
+- `src/services/api.ts` — API integration layer for chat requests
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Development commands
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+To build the production bundle:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm run build
 ```
+
+## Notes
+
+This frontend is intentionally focused on a lightweight chat UI rather than a generic starter template. The codebase reflects a practical conversational interface for an AI assistant, with a direct connection to the FastAPI backend.
+
