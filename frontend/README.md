@@ -17,9 +17,11 @@ The current interface includes:
 
 1. A user types a message in the input area.
 2. The frontend appends the user message to the conversation.
-3. The message is sent to the backend endpoint at `/api/chat/message`.
-4. The backend returns an AI-generated response.
-5. The frontend renders the assistant reply and updates the chat view.
+3. The message is sent to the backend endpoint at `/api/chat/message` with `conversation_id` if one exists.
+4. If no conversation ID exists, the backend creates a new conversation and returns `conversation_id`.
+5. The frontend stores the backend `conversation_id` in local storage and reuses it for subsequent requests.
+6. The backend returns the AI-generated response text.
+7. The frontend renders the assistant reply and updates the chat view.
 
 ## Key frontend files
 

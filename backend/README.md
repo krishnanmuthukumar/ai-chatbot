@@ -9,7 +9,9 @@ The current backend implementation includes:
 - a FastAPI application with CORS enabled for frontend communication
 - a chat router that accepts messages from the frontend
 - conversation creation and message persistence in SQLite
+- retrieving conversation history by `conversation_id` and sending it to the LLM with role context
 - streaming model requests to the configured local AI endpoint
+- returning a structured JSON response with `text` and `conversation_id`
 - settings management via environment variables for model URL and model name
 
 ## Main request flow
@@ -18,9 +20,11 @@ The current backend implementation includes:
 2. The backend validates the incoming payload.
 3. If no conversation ID is provided, the backend creates a new conversation row.
 4. The user message is inserted into the `messages` table.
-5. The backend sends the request to the Ollama model endpoint.
-6. The streamed AI response is collected and stored back in the database.
-7. The final response is returned to the frontend.
+5. The backend loads all existing messages for that `conversation_id` and builds the chat history with correct roles.
+6. The backend sends the request to the Ollama model endpoint.
+7. The streamed AI response is collected and stored back in the database.
+8. The final response is returned to the frontend as JSON with `text` and `conversation_id`.
+9. The frontend saves the returned `conversation_id` and reuses it for subsequent chat requests.
 
 ## Key backend files
 

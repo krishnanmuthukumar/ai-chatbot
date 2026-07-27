@@ -1,3 +1,5 @@
+from asyncio.log import logger
+
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
@@ -16,5 +18,6 @@ async def get_chat(
         payload: MessageSchema, 
         settings: Settings = Depends(get_settings)
     ):
+    logger.info(f"Received message: {payload.message} with conversation_id: {payload.conversation_id}")
     chat_request = ChatRequest(message=payload.message, conversation_id=payload.conversation_id, settings=settings)
     return await chat_request.getModelResponse()

@@ -2,9 +2,9 @@ from fastapi import HTTPException, status
 import httpx
 import logging
 import json
-import app.db.database as db
-
+import app.db.conversationdao as cd
 from app.config import Settings
+import app.services.conversationservice as cs    
 
 logger = logging.getLogger(__name__)
 
@@ -14,44 +14,21 @@ class ChatRequest:
         self.message = message
         self.conversation_id = conversation_id
         self.settings = settings
-
-    def insert_message(self):
-        conn = db.get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO messages (content, conversation_id) VALUES (?, ?)",
-            (self.message, self.conversation_id)
-        )
-        conn.commit()
-
-    def create_conversation(self):
-        conn = db.get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO conversations (user_id) VALUES (?)",
-            (1,)  # Assuming a default user_id for demonstration
-        )
-        conn.commit()
-    
-    def get_last_conversation_id(self):
-        conn = db.get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT last_insert_rowid()")
-        return cursor.fetchone()[0]
     
     async def getModelResponse(self) -> str:
         if not self.conversation_id:
-            self.create_conversation()
-            self.conversation_id = self.get_last_conversation_id()
+            cd.create_conversation(self)
+            self.conversation_id = cd.get_last_conversation_id(self)
        
         if self.conversation_id:
-            self.insert_message()      
+            cd.insert_message(self, role="user")
 
         async with httpx.AsyncClient() as client:
             try:
                 logger.info(
                     f"Sending request to model API at {self.settings.MODEL_API_URL} with model {self.settings.MODEL_NAME}"
                 )
+                parts = []
                 # Use an explicit streaming request so we can consume newline-delimited
                 # JSON objects from the model API as they arrive.
                 async with client.stream(
@@ -59,7 +36,7 @@ class ChatRequest:
                     f"{self.settings.MODEL_API_URL}/api/chat",
                     json={
                         "model": self.settings.MODEL_NAME,
-                        "messages": [{"role": "user", "content": self.message}, {"role": "system", "content": "You are a helpful assistant."}],
+                        "messages": cs.build_messages(self),
                         "stream": True,
                     },
                     timeout=60.0,
@@ -92,10 +69,12 @@ class ChatRequest:
 
                         if content:
                             logger.debug(f"Received line from model API: {content}")
-                            textresponse += content
+                            parts.append(content)
+                    logger.info(f"Final assembled response from model API: {''.join(parts)}")
+                    textresponse = "".join(parts)
                     self.message = textresponse  # Update the message with the model's response
-                    self.insert_message()  # Store the model's response in the database
-                    return textresponse
+                    cd.insert_message(self, role="assistant")  # Store the model's response in the database
+                    return {"response": textresponse, "conversation_id": self.conversation_id}
             
             except httpx.HTTPStatusError as exc:
                 raise HTTPException(

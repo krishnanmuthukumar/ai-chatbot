@@ -2,7 +2,7 @@ import sqlite3
 
 _connection = None
 
-def init_db(db_name = "app.db"):
+def init_db(db_name = "chatapp.db"):
     global _connection
     if _connection is None:
         _connection = sqlite3.connect(db_name, check_same_thread=False)
@@ -17,8 +17,9 @@ def init_db(db_name = "app.db"):
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS messages (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                conversation_id INTEGER NOT NULL,
+                role TEXT NOT NULL,
                 content TEXT NOT NULL,
-                conversation_id INTEGER,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (conversation_id) REFERENCES conversations (id)
             )

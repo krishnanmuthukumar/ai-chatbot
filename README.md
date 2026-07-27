@@ -17,7 +17,8 @@ The solution is designed to demonstrate a practical end-to-end architecture for:
 
 - Clean and responsive user interface built with React + Vite
 - Fast API endpoints for chat interactions
-- Conversation-aware request handling
+- Conversation-aware request handling with persisted session state
+- Historical messages retrieved by `conversation_id` and sent to the LLM with role context
 - Local AI inference using the Phi-4 Mini model
 - Containerized Ollama setup for easy model serving
 
@@ -92,8 +93,20 @@ The backend includes a chat route for sending user messages:
 POST /api/chat/message
 ```
 
+The endpoint accepts a JSON body containing `message` and an optional `conversation_id`. If no `conversation_id` is provided, the backend creates a new conversation and returns a structured JSON response with `text` and `conversation_id`.
+
+Example response:
+
+```json
+{
+  "text": "AI response text",
+  "conversation_id": 1
+}
+```
+
 ## Development Notes
 
+- The frontend stores `conversation_id` in local storage and reuses it for subsequent chat requests.
 - The frontend is configured for modern React development with Vite.
 - The backend is built using FastAPI for low-latency API responses.
 - Ollama provides a lightweight local deployment path for running the AI model without external cloud dependencies.
