@@ -19,6 +19,7 @@ The solution is designed to demonstrate a practical end-to-end architecture for:
 - Fast API endpoints for chat interactions
 - Conversation-aware request handling with persisted session state
 - Historical messages retrieved by `conversation_id` and sent to the LLM with role context
+- Automatic summarization of older chat history when the configured threshold is reached
 - Local AI inference using the Phi-4 Mini model
 - Containerized Ollama setup for easy model serving
 
@@ -94,6 +95,8 @@ POST /api/chat/message
 ```
 
 The endpoint accepts a JSON body containing `message` and an optional `conversation_id`. If no `conversation_id` is provided, the backend creates a new conversation and returns a structured JSON response with `text` and `conversation_id`.
+
+When the conversation exceeds the configured message threshold, the backend summarizes older history and sends that summary plus the latest user prompt to the model instead of forwarding the full raw history.
 
 Example response:
 

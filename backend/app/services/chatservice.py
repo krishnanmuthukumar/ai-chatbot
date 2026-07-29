@@ -4,6 +4,7 @@ import logging
 import json
 import app.db.conversationdao as cd
 from app.config import Settings
+from app.services.summaryservice import SummaryRequest
 import app.services.conversationservice as cs    
 
 logger = logging.getLogger(__name__)
@@ -16,12 +17,16 @@ class ChatRequest:
         self.settings = settings
     
     async def getModelResponse(self) -> str:
+        summary = None
         if not self.conversation_id:
             cd.create_conversation(self)
             self.conversation_id = cd.get_last_conversation_id(self)
-       
-        if self.conversation_id:
-            cd.insert_message(self, role="user")
+
+        message_count = cd.getMessagesCount(self.conversation_id)
+        if message_count > self.settings.MESSAGE_THRESHOLD:
+            summary = SummaryRequest(conversation_id=self.conversation_id, settings=self.settings).get_message_summary()
+
+        cd.insert_message(self, role="user")
 
         async with httpx.AsyncClient() as client:
             try:
@@ -36,7 +41,7 @@ class ChatRequest:
                     f"{self.settings.MODEL_API_URL}/api/chat",
                     json={
                         "model": self.settings.MODEL_NAME,
-                        "messages": cs.build_messages(self),
+                        "messages": cs.build_messages(self, self.settings, summary=summary, include_current_user=False),
                         "stream": True,
                     },
                     timeout=60.0,
@@ -86,3 +91,5 @@ class ChatRequest:
                     status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                     detail=f"Error communicating with model API: {exc}",
                 ) from exc
+            
+    

@@ -32,3 +32,11 @@ def get_conversation_history(conversation_id):
         (conversation_id,)
     )
     return cursor.fetchall()
+
+def getMessagesCount(conversaion_id):
+    conn = db.get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT COUNT(*) FROM messages WHERE conversation_id = ? ", (conversaion_id,)
+    )
+    return cursor.fetchone()[0]

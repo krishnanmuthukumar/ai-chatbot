@@ -10,6 +10,7 @@ The current backend implementation includes:
 - a chat router that accepts messages from the frontend
 - conversation creation and message persistence in SQLite
 - retrieving conversation history by `conversation_id` and sending it to the LLM with role context
+- summarizing older conversation history when the configured message threshold is reached, then sending the summary plus the latest user prompt to the model
 - streaming model requests to the configured local AI endpoint
 - returning a structured JSON response with `text` and `conversation_id`
 - settings management via environment variables for model URL and model name
@@ -20,8 +21,10 @@ The current backend implementation includes:
 2. The backend validates the incoming payload.
 3. If no conversation ID is provided, the backend creates a new conversation row.
 4. The user message is inserted into the `messages` table.
-5. The backend loads all existing messages for that `conversation_id` and builds the chat history with correct roles.
-6. The backend sends the request to the Ollama model endpoint.
+5. The backend loads all existing messages for that `conversation_id` and checks the configured threshold.
+6. If the threshold is exceeded, older history is summarized and the model request includes that summary plus the latest user prompt.
+7. Otherwise, the full history is sent to the model.
+8. The backend sends the request to the Ollama model endpoint.
 7. The streamed AI response is collected and stored back in the database.
 8. The final response is returned to the frontend as JSON with `text` and `conversation_id`.
 9. The frontend saves the returned `conversation_id` and reuses it for subsequent chat requests.
