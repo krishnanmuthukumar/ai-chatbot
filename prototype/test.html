@@ -1,0 +1,42 @@
+<!doctype html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <title>Tes UI</title>
+</head>
+
+<body class="p-4">
+  <!-- Trigger Button -->
+
+
+  <!-- Container using arbitrary grid column widths -->
+  <div id="grid-container" class="grid grid-cols-[2fr_3fr] gap-4 items-stretch transition-all duration-300">
+
+    <!-- Left Column -->
+    <div class="bg-blue-100 p-4 overflow-hidden">
+      <button onclick="toggleSize()" class="mb-4 px-4 py-2 bg-blue-600 text-white rounded">
+        Toggle
+      </button>
+    </div>
+
+    <!-- Right Column -->
+    <div class="flex flex-col gap-4">
+      <div class="bg-blue-100 p-4 flex-1">Item 1</div>
+      <div class="bg-blue-100 p-4 flex-1">Item 2</div>
+      <div class="bg-blue-100 p-4 flex-1">Item 3</div>
+    </div>
+
+  </div>
+
+  <!-- Toggle Script -->
+  <script>
+    function toggleSize() {
+      const container = document.getElementById('grid-container');
+      // Toggle between a balanced layout (2fr vs 3fr) and a shrunken left layout (1fr vs 4fr)
+      container.classList.toggle('grid-cols-[2fr_3fr]');
+      container.classList.toggle('grid-cols-[1fr_10fr]');
+    }
+  </script>
+</body>
