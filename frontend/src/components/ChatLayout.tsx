@@ -2,8 +2,8 @@ import Header from "./Header";
 import Footer from "./Footer";
 import Conversation from "./Conversation";
 import { useState } from "react";
-import type { Message } from "./types";
-import { sendMessageAPI } from "../services/api";
+import type { Message, RecentChat } from "./types";
+import { sendMessageAPI, getConversationHistoryAPI } from "../services/api";
 import { useEffect } from "react";
 import Sidebar from "./Sidebar";
 
@@ -11,9 +11,23 @@ const ChatLayout = () => {
 
     const [messages, setMessages] = useState<Message[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [conversation_id, setConversationId] = useState<string | null>(
         () => localStorage.getItem('conversation_id')
     );
+    const [recentChats, setRecentChats] = useState<RecentChat[]>(() => {
+        const stored = localStorage.getItem('recentChats');
+        if (!stored) {
+            return [];
+        }
+
+        try {
+            return JSON.parse(stored) as RecentChat[];
+        } catch (error) {
+            console.error('Unable to parse recent chats from localStorage', error);
+            return [];
+        }
+    });
 
     useEffect(() => {
         localStorage.removeItem("conversation_id");
@@ -24,6 +38,51 @@ const ChatLayout = () => {
             localStorage.setItem('conversation_id', id);
             setConversationId(id);
         }
+    };
+
+    const addRecentChat = (chatId: string | null, title?: string | null) => {
+        if (!chatId || !title || !title.trim()) {
+            return;
+        }
+
+        const titleSource = title.trim();
+        const shortTitle = titleSource.length > 44 ? `${titleSource.slice(0, 44)}...` : titleSource;
+
+        setRecentChats((current) => {
+            const updated = [
+                { id: chatId, title: shortTitle, updatedAt: Date.now() },
+                ...current.filter((chat) => chat.id !== chatId)
+            ];
+
+            localStorage.setItem('recentChats', JSON.stringify(updated.slice(0, 10)));
+            return updated.slice(0, 10);
+        });
+    };
+
+    const restoreConversation = async (chatId: string) => {
+        const conversationMessages = await getConversationHistoryAPI(chatId);
+
+        if (conversationMessages.length > 0) {
+            setMessages(conversationMessages);
+            setConversationId(chatId);
+            localStorage.setItem('conversation_id', chatId);
+        } else {
+            setMessages([]);
+        }
+
+        setIsLoading(false);
+    };
+
+    const startNewChat = () => {
+        if (conversation_id) {
+            const existingTitle = recentChats.find((chat) => chat.id === conversation_id)?.title;
+            addRecentChat(conversation_id, existingTitle);
+        }
+
+        setMessages([]);
+        setIsLoading(false);
+        setConversationId(null);
+        localStorage.removeItem('conversation_id');
     };
 
     const sendMessage = async (message: string) => {
@@ -40,13 +99,15 @@ const ChatLayout = () => {
         try {
             if (conversationId === null) {
                 const initialResponse = await sendMessageAPI(newMessage);
-                handleConversationIdChange(initialResponse.conversation_id); // Set the conversation ID from the initial response
+                handleConversationIdChange(initialResponse.conversation_id);
                 setMessages(prevMessages => [...prevMessages, initialResponse]);
+                addRecentChat(initialResponse.conversation_id, initialResponse.title);
                 setIsLoading(false);
                 return;
             } else {
                 const aiResponse = await sendMessageAPI(newMessage);
                 setMessages(prevMessages => [...prevMessages, aiResponse]);
+                addRecentChat(aiResponse.conversation_id, aiResponse.title);
                 setIsLoading(false);
             }
         } catch (err) {
@@ -61,15 +122,23 @@ const ChatLayout = () => {
 
     return (
         <div className="flex justify-center h-screen bg-slate-100">
-            <div className="flex w-[700px] h-[500px] border border-slate-300 rounded-md">
-                <Sidebar />
-                <div className="flex flex-1 flex-col min-h-0">
+            <div className={`grid ${isSidebarOpen ? 'grid-cols-[340px_minmax(420px,1fr)]' : 'grid-cols-[48px_minmax(420px,1fr)]'} items-stretch h-screen transition-all duration-300`}>
+                <aside className="overflow-hidden min-h-0 h-full border border-slate-300 bg-white shadow-sm">
+                    <Sidebar
+                        recentChats={recentChats}
+                        onNewChat={startNewChat}
+                        onSelectRecent={restoreConversation}
+                        isSidebarOpen={isSidebarOpen}
+                        onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+                    />
+                </aside>
+                <section className="flex flex-col gap-4 min-w-0 h-full border border-slate-300 bg-white shadow-sm">
                     <Header />
                     <main className="flex-1 min-h-0">
                         <Conversation items={messages} isLoading={isLoading} />
                     </main>
                     <Footer onSend={sendMessage} />
-                </div>
+                </section>
             </div>
         </div>
     )

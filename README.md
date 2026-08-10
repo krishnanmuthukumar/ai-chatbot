@@ -4,24 +4,67 @@ A modern full-stack conversational AI application that combines a React frontend
 
 ## Overview
 
-This project delivers a simple but scalable chatbot experience where users can send natural-language prompts through a responsive web interface, and the backend forwards those requests to a local AI model for inference.
+This project delivers a browser-based chatbot flow where users send natural-language prompts, continue existing conversations, and work with a history panel of recent chats.
 
-The solution is designed to demonstrate a practical end-to-end architecture for:
+The application is organized around a simple but practical runtime model:
 
-- interactive frontend conversations
-- API-driven backend orchestration
-- local model hosting with Ollama
-- modular service-based application structure
+- the frontend owns the live UI and request state
+- the API layer receives chat payloads and conversation restore requests
+- the backend inserts user and assistant messages into SQLite, builds model context, and returns a streamed model answer
+- a conversation title can be generated only for a new, meaningful request and is returned to the UI as part of the API response
 
-## Features
+## Current Behavior and Features
 
-- Clean and responsive user interface built with React + Vite
-- Fast API endpoints for chat interactions
-- Conversation-aware request handling with persisted session state
-- Historical messages retrieved by `conversation_id` and sent to the LLM with role context
-- Automatic summarization of older chat history when the configured threshold is reached
-- Local AI inference using the Phi-4 Mini model
-- Containerized Ollama setup for easy model serving
+- React + Vite chat UI with a responsive two-pane layout
+- A sidebar that presents recent conversations and allows a user to open a prior chat
+- A new chat action that clears the active in-memory message list and resets the current conversation id
+- Conversation restoration through `GET /api/chat/history/{conversation_id}` so the UI can continue a selected chat from the stored backend history
+- Request/response handling through `POST /api/chat/message`
+- Conversation-aware history retrieval and message persistence through SQLite
+- A meaningful-request title gate: the backend checks whether a first prompt is trivial before asking the title LLM for a conversation title
+- Optional title generation that never blocks the main assistant response path if title generation fails
+- Recents are refreshed using the title returned by the API response payload rather than the prompt text
+
+## API Contract Highlights
+
+### Send a message
+
+```text
+POST /api/chat/message
+```
+
+Request body:
+
+```json
+{
+  "message": "Explain the architecture briefly",
+  "conversation_id": 12
+}
+```
+
+The backend creates a conversation when the request does not carry one, stores the user message, asks the model for a response, and returns a payload like:
+
+```json
+{
+  "response": "The architecture is ...",
+  "conversation_id": 12,
+  "title": "Explain the architecture"
+}
+```
+
+Notes:
+
+- `title` is a conversation title attached to the first answer for a new conversation.
+- The title is only generated when the user prompt passes the trivial-message classifier.
+- If the title pipeline fails, the assistant answer still returns normally.
+
+### Load a stored conversation
+
+```text
+GET /api/chat/history/{conversation_id}
+```
+
+This endpoint returns a history payload containing the conversation id and role-based message objects that the frontend can use to repopulate the chat window.
 
 ## Technology Stack
 
@@ -29,6 +72,7 @@ The solution is designed to demonstrate a practical end-to-end architecture for:
 - Backend: Python, FastAPI
 - AI Runtime: Ollama
 - Model: Phi-4 Mini
+- Database: SQLite
 - Containerization: Docker Compose
 
 ## Architecture
@@ -37,8 +81,10 @@ The application follows a simple three-layer structure:
 
 1. Frontend
    - Handles user input and displays chatbot responses
+   - Stores recents in local storage and calls the restore history API for selected chats
 2. Backend
    - Exposes REST APIs and coordinates chat requests
+   - Persists conversation / message records in SQLite
 3. AI Layer
    - Runs the language model locally using Ollama
 
@@ -61,7 +107,7 @@ cd docker/ollama
 docker compose up -d
 ```
 
-This starts the Ollama container and pulls the Phi-4 Mini model for local inference.
+This starts the Ollama container and prepares the local model runtime.
 
 ### 2. Start the backend
 
@@ -86,31 +132,11 @@ The frontend will be available at:
 
 - http://localhost:5173
 
-## API Endpoint
-
-The backend includes a chat route for sending user messages:
-
-```text
-POST /api/chat/message
-```
-
-The endpoint accepts a JSON body containing `message` and an optional `conversation_id`. If no `conversation_id` is provided, the backend creates a new conversation and returns a structured JSON response with `text` and `conversation_id`.
-
-When the conversation exceeds the configured message threshold, the backend summarizes older history and sends that summary plus the latest user prompt to the model instead of forwarding the full raw history.
-
-Example response:
-
-```json
-{
-  "text": "AI response text",
-  "conversation_id": 1
-}
-```
-
 ## Development Notes
 
 - The frontend stores `conversation_id` in local storage and reuses it for subsequent chat requests.
-- The frontend is configured for modern React development with Vite.
+- Recent chats are kept as a browser-side list of titles and IDs and are restored through the history API.
+- Conversation titles are read from the backend response where available and pushed into the recent-chat list instead of trying to infer them from the client-side request text.
 - The backend is built using FastAPI for low-latency API responses.
 - Ollama provides a lightweight local deployment path for running the AI model without external cloud dependencies.
 

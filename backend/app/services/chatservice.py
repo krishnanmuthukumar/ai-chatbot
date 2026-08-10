@@ -2,6 +2,7 @@ from fastapi import HTTPException, status
 import httpx
 import logging
 import json
+import re
 import app.db.conversationdao as cd
 from app.config import Settings
 from app.services.summaryservice import SummaryRequest
@@ -15,12 +16,101 @@ class ChatRequest:
         self.message = message
         self.conversation_id = conversation_id
         self.settings = settings
+
+    def is_trivial_request(self) -> bool:
+        raw = self.message.strip().lower()
+        if not raw:
+            return True
+
+        compact = re.sub(r"[^a-z0-9\s]", " ", raw)
+        normalized = re.sub(r"\s+", " ", compact).strip()
+
+        trivial_phrases = {
+            "hi", "hello", "hey", "good morning", "good afternoon", "good evening",
+            "thanks", "thank you", "thanks a lot", "thanks you", "ok", "okay",
+            "yes", "no", "fine", "good", "how are you", "what can you do",
+            "what do you do", "who are you", "help", "hello there", "hi there"
+        }
+
+        if normalized in trivial_phrases:
+            return True
+
+        words = normalized.split()
+        if len(words) <= 3 and normalized in {"hey", "hello", "hi", "how are you", "what up"}:
+            return True
+
+        if len(words) <= 2:
+            simple_greeting = ["hi", "hello", "hey", "ok", "okay", "thanks"]
+            if words and words[0] in simple_greeting:
+                return True
+
+        return False
+
+    async def generate_title_with_llm(self) -> str | None:
+        async with httpx.AsyncClient() as client:
+            try:
+                payload = {
+                    "model": self.settings.MODEL_NAME,
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": "Return only a short human-readable title for this request. Keep it under 6 words and do not add punctuation."
+                        },
+                        {
+                            "role": "user",
+                            "content": f"Create a short title for this message: {self.message}"
+                        }
+                    ],
+                    "stream": False
+                }
+
+                response = await client.post(
+                    f"{self.settings.MODEL_API_URL}/api/chat",
+                    json=payload,
+                    timeout=60.0,
+                )
+                response.raise_for_status()
+
+                data = await response.json()
+                output = None
+                if isinstance(data, dict):
+                    message = data.get("message")
+                    if isinstance(message, dict):
+                        output = message.get("content")
+                    elif isinstance(message, str):
+                        output = message
+
+                if not isinstance(output, str) or not output.strip():
+                    output = self.message.strip()
+
+                title = re.sub(r"\s+", " ", output.strip())
+                title = title[:48].rstrip() + ("..." if len(title) > 48 else "")
+                return title
+            except Exception as exc:
+                logger.warning(f"Title LLM generation failed: {exc}")
+                return None
+
+    async def generate_title(self) -> str | None:
+        if self.is_trivial_request():
+            return None
+
+        return await self.generate_title_with_llm()
     
     async def getModelResponse(self) -> str:
         summary = None
+        title = None
         if not self.conversation_id:
             cd.create_conversation(self)
             self.conversation_id = cd.get_last_conversation_id(self)
+            try:
+                title = await self.generate_title()
+                if title:
+                    cd.update_conversation_title(self.conversation_id, title)
+            except Exception as exc:
+                logger.warning(f"Title generation aborted for conversation {self.conversation_id}: {exc}")
+                title = None
+        else:
+            title = cd.get_conversation_title(self.conversation_id)
 
         message_count = cd.getMessagesCount(self.conversation_id)
         if message_count > self.settings.MESSAGE_THRESHOLD:
@@ -79,7 +169,11 @@ class ChatRequest:
                     textresponse = "".join(parts)
                     self.message = textresponse  # Update the message with the model's response
                     cd.insert_message(self, role="assistant")  # Store the model's response in the database
-                    return {"response": textresponse, "conversation_id": self.conversation_id}
+                    return {
+                        "response": textresponse,
+                        "conversation_id": self.conversation_id,
+                        "title": title,
+                    }
             
             except httpx.HTTPStatusError as exc:
                 raise HTTPException(
