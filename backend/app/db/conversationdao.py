@@ -18,6 +18,26 @@ def create_conversation(self):
         )
         conn.commit()
 
+def update_conversation_title(conversation_id, title):
+        conn = db.get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE conversations SET title = ?, title_generated = 1 WHERE id = ?",
+            (title, conversation_id)
+        )
+        conn.commit()
+
+
+def get_conversation_title(conversation_id):
+        conn = db.get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT title FROM conversations WHERE id = ?",
+            (conversation_id,)
+        )
+        row = cursor.fetchone()
+        return row[0] if row else None
+
 def get_last_conversation_id(self):
         conn = db.get_db_connection()
         cursor = conn.cursor()

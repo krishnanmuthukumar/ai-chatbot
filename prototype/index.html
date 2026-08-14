@@ -1,38 +1,74 @@
-<!doctype html lang="en">
+<!doctype html>
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <title>Chat UI</title>
+    <script>
+        function toggleSize() {
+            const container = document.getElementById('grid-container');
+            const title = document.getElementById('left-panel-title');
+            const newChat = document.getElementById('new-chat-row');
+
+            // Expand/collapse left panel and hide/show the header text.
+            container.classList.toggle('grid-cols-[340px_minmax(420px,1fr)]');
+            container.classList.toggle('grid-cols-[48px_minmax(420px,1fr)]');
+
+            if (title) {
+                title.classList.toggle('hidden');
+            }
+
+            if (newChat) {
+                newChat.classList.toggle('hidden');
+            }
+        }
+    </script>
 </head>
 
 <body class="flex justify-center h-screen bg-slate-100">
-    <div class="w-96 h-96 border border-slate-300 rounded-md flex flex-col ">
-        <!-- header-->
-        <div class="bg-sky-700 h-10 flex items-center">
-            <div class="flex items-center gap-2 text-xl font-bold text-white px-2">
-                <img class="w-6 h-6" src=" ../frontend/assets/chat-icon.png " />
-                <a href="#">
-                    AI Chatbot
-                </a>
+    <div id="grid-container" class="grid grid-cols-[340px_minmax(420px,1fr)] items-stretch h-screen transition-all duration-300">
+        <aside class="overflow-hidden min-h-0 h-full border border-slate-300 bg-white shadow-sm">
+            <header class="bg-sky-700 h-10 flex items-center justify-between shrink-0 px-2 gap-3">
+                <div class="flex items-center gap-2 text-xl font-bold text-white">
+                    <img class="w-6 h-6 cursor-pointer" src="../frontend/src/assets/chat-icon.png" alt="" onclick="toggleSize()" />
+                    <a id="left-panel-title" href="#">
+                        Chat Bot
+                    </a>
+                </div>
+            </header>
+            <div id="new-chat-row" class="p-2 flex flex-col gap-2">
+                <div class="flex items-center gap-2 px-2 py-2 hover:bg-sky-50 border border-slate-200">
+                    <img class="w-6 h-6" src="../frontend/src/assets/new-chat.png" alt="" />
+                    <span class="text-sm text-slate-700">New Chat</span>
+                </div>
+                <div class="flex items-center gap-2 px-2 py-2 hover:bg-sky-50 border border-slate-200">
+                    <img class="w-6 h-6" src="../frontend/src/assets/recent-chat.png" alt="" />
+                    <span class="text-sm text-slate-700">Recent Chat</span>
+                </div>
             </div>
-        </div>
-        <!-- conversation-->
-        <div class="w-full h-60 overflow-y-auto p-3 flex flex-col gap-2">
-            <div class="flex flex-col items-end max-w-[85%] ml-auto">
-                <div class="text-sm"> Hello! How can I help you today?</div>
+        </aside>
+        <section class="flex flex-col gap-4 min-w-0 h-full border border-slate-300 bg-white shadow-sm">
+            <header class="bg-sky-700 h-10 flex items-center shrink-0">
+                <div class="flex items-center gap-2 text-xl font-bold text-white px-2">
+                   
+                </div>
+            </header>
+            <div class="w-full flex-1 overflow-y-auto p-3 flex flex-col gap-2">
+                <div class="flex flex-col items-end max-w-[85%] ml-auto">
+                    <div class="text-sm"> Hello! How can I help you today?</div>
+                </div>
+                <div class="flex flex-col items-start max-w-[85%]">
+                    <div class="text-sm"> Hi, I need help with my scrollable fixed-width div layout in Tailwind. </div>
+                </div>
             </div>
-            <div class="flex flex-col items-start max-w-[85%]">
-                <div class="text-sm"> Hi, I need help with my scrollable fixed-width div layout in Tailwind. </div>
+            <div class="p-2 shrink-0">
+                <input
+                    class="block bg-white w-full border border-slate-300 placeholder:italic placeholder:text-slate-400 p-2"
+                    placeholder="ask anything" type="text" name="input">
             </div>
-        </div>
-        <!-- footer-->
-        <div class="p-2">
-            <input
-                class="block bg-white w-full border border-slate-300 rounded-md placeholder:italic placeholder:text-slate-400 p-2"
-                placeholder="ask anything" type="text" name="input">
-        </div>
+        </section>
     </div>
 </body>
 

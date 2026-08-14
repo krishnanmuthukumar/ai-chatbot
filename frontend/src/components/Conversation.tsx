@@ -9,7 +9,7 @@ function Conversation({ items, isLoading, }: { items: Message[], isLoading: bool
     }, [items]);
 
     return (
-        <div className="w-full h-60 overflow-y-auto p-3 flex flex-col gap-2">
+        <div className="w-full h-full overflow-y-auto p-3 flex flex-col gap-2">
             {items.map((item) => {
                 const isUser = item.sender === 'user';
                 return (
