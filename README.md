@@ -66,6 +66,33 @@ GET /api/chat/history/{conversation_id}
 
 This endpoint returns a history payload containing the conversation id and role-based message objects that the frontend can use to repopulate the chat window.
 
+### Upload a document
+
+```text
+POST /api/documents
+```
+
+Request: Multipart form data with a single file field
+
+```
+Content-Type: multipart/form-data
+file: <binary file data>
+```
+
+Response:
+
+```json
+{
+  "document_id": "abc123def456..."
+}
+```
+
+Notes:
+
+- Accepts any file type (PDF, TXT, etc.)
+- File extension is preserved in the stored filename
+- Document ID is generated using SHA256 hash of file contents
+
 ## Technology Stack
 
 - Frontend: React, TypeScript, Vite
@@ -73,7 +100,26 @@ This endpoint returns a history payload containing the conversation id and role-
 - AI Runtime: Ollama
 - Model: Phi-4 Mini
 - Database: SQLite
+- Document Storage: Local filesystem
 - Containerization: Docker Compose
+
+## Environment Configuration
+
+The backend requires the following environment variables in a `.env` file:
+
+```env
+MODEL_API_URL=http://localhost:11434
+MODEL_NAME=phi
+MESSAGE_THRESHOLD=3
+DOCUMENT_STORAGE_TYPE=local
+DOCUMENT_STORAGE_PATH=./backend/storage
+```
+
+- `MODEL_API_URL`: The URL of the Ollama API server
+- `MODEL_NAME`: The model identifier to use (e.g., phi, mistral, llama2)
+- `MESSAGE_THRESHOLD`: Number of messages before triggering certain backend actions
+- `DOCUMENT_STORAGE_TYPE`: Storage backend type (currently supports "local")
+- `DOCUMENT_STORAGE_PATH`: Local directory path for storing uploaded documents
 
 ## Architecture
 
@@ -93,10 +139,14 @@ The application follows a simple three-layer structure:
 ```text
 ai-chatbot/
 ├── backend/        # FastAPI application
+│   ├── app/        # Application code
+│   └── storage/    # Document storage 
 ├── frontend/       # React + Vite frontend
 ├── docker/         # Docker setup for local model serving
 └── README.md       # Project overview
 ```
+
+Note: The `backend/storage/` directory is ignored in `.gitignore` to prevent storing user-uploaded documents in version control.
 
 ## Quick Start
 

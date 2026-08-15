@@ -31,3 +31,4 @@ out.txt
 repos.py
 github_ai_chatbot_roadmap.csv
 backend/uv.lock
+backend/storage/

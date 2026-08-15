@@ -1,3 +1,4 @@
+from app.api import document_api
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.api import chat
@@ -15,6 +16,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="AI Chatbot API", description="API for AI Chatbot", version="1.0.0", lifespan=lifespan)
 app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
+app.include_router(document_api.router, prefix="/api/documents", tags=["documents"])
 
 origins = [
     "http://localhost:3000",      # React default port

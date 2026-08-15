@@ -15,7 +15,9 @@ The current backend implementation includes:
 - summarization of older conversation history when the configured message threshold is reached, then sending the summary plus the latest user prompt to the model
 - streaming model requests to the configured local AI endpoint
 - returning a structured JSON response with `response`, `conversation_id`, and an optional `title`
-- settings management via environment variables for model URL, model name, and message threshold configuration
+- document upload endpoint for storing files with multipart form-data support
+- document persistence with SHA256-based ID generation and file extension preservation
+- settings management via environment variables for model URL, model name, message threshold, and document storage configuration
 
 ## Main request flow
 
@@ -43,6 +45,18 @@ The current service layer supports a title-only pipeline that is intentionally n
 - `getModelResponse()` stores the returned title on the conversation when the conversation is newly created.
 - A title-generation exception is caught and logged as a warning, but it does not poison the main assistant answer.
 
+## Document upload flow
+
+The document upload feature follows a layered architecture:
+
+1. The frontend sends a multipart file upload to `POST /api/documents`.
+2. The endpoint uses dependency injection to obtain the `DocumentService` instance via `get_document_service()`.
+3. `get_document_service()` returns a service configured with storage initialized through `get_document_storage()`.
+4. `get_document_storage()` reads the `DOCUMENT_STORAGE_TYPE` setting and instantiates the appropriate storage backend (currently only `LocalDocStorage`).
+5. `DocumentService.upload_document()` reads the multipart file, generates a SHA256-based ID, preserves the file extension, and calls `storage.save()`.
+6. The storage implementation persists the file to disk at `{DOCUMENT_STORAGE_PATH}/{document_id_with_extension}`.
+7. The generated document ID (with file extension) is returned to the frontend as JSON.
+
 ## API surface
 
 ### POST /api/chat/message
@@ -63,13 +77,37 @@ Example response:
 
 This reads historical role/message rows for a stored conversation and returns them in a frontend-friendly shape.
 
+### POST /api/documents
+
+This endpoint accepts a multipart file upload and stores the document locally.
+
+Request: Multipart form data with a single `file` field
+
+Example response:
+
+```json
+{
+  "document_id": "abc123def456..."
+}
+```
+
+Notes:
+- Accepts any file type (PDF, TXT, DOCX, etc.)
+- File extension is preserved in the stored document ID
+- Document ID is generated using SHA256 hash of file contents
+
 ## Key backend files
 
 - `app/main.py` — application startup, middleware setup, and router registration
 - `app/api/chat.py` — chat endpoint definition and request handling
+- `app/api/document_api.py` — document upload endpoint and file handling
 - `app/services/chatservice.py` — conversation logic, title classification, title generation, and model streaming integration
 - `app/services/summaryservice.py` — conversation-summary support for larger histories
-- `app/config.py` — environment-based settings for model connection details
+- `app/services/documentservice.py` — document upload and ID generation logic
+- `app/storage/document_storage.py` — abstract storage interface
+- `app/storage/local_doc_storage.py` — local filesystem storage implementation
+- `app/dependencies/document_dependencies.py` — dependency injection setup for document storage and service initialization
+- `app/config.py` — environment-based settings for model and document storage configuration
 - `app/db/database.py` — SQLite initialization and connection management
 - `app/db/conversationdao.py` — conversation title and message CRUD helpers
 
@@ -79,9 +117,17 @@ The backend expects the following environment variables in a `.env` file:
 
 ```env
 MODEL_API_URL=http://localhost:11434
-MODEL_NAME=phi4-mini
-MESSAGE_THRESHOLD=6
+MODEL_NAME=phi
+MESSAGE_THRESHOLD=3
+DOCUMENT_STORAGE_TYPE=local
+DOCUMENT_STORAGE_PATH=./backend/storage
 ```
+
+- `MODEL_API_URL` — URL of the Ollama API server
+- `MODEL_NAME` — Model identifier to use (e.g., phi, mistral, llama2)
+- `MESSAGE_THRESHOLD` — Number of messages before triggering conversation summarization
+- `DOCUMENT_STORAGE_TYPE` — Storage backend type (currently supports "local")
+- `DOCUMENT_STORAGE_PATH` — Local directory for storing uploaded documents
 
 ## Development commands
 
