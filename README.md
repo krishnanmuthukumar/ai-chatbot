@@ -20,6 +20,8 @@ The application is organized around a simple but practical runtime model:
 - A new chat action that clears the active in-memory message list and resets the current conversation id
 - Conversation restoration through `GET /api/chat/history/{conversation_id}` so the UI can continue a selected chat from the stored backend history
 - Request/response handling through `POST /api/chat/message`
+- PDF upload from the chat footer using a file picker and multipart form submission
+- Strict PDF-only validation on the backend, including file type, signature header, and PyMuPDF parsing checks
 - Conversation-aware history retrieval and message persistence through SQLite
 - A meaningful-request title gate: the backend checks whether a first prompt is trivial before asking the title LLM for a conversation title
 - Optional title generation that never blocks the main assistant response path if title generation fails
@@ -89,9 +91,11 @@ Response:
 
 Notes:
 
-- Accepts any file type (PDF, TXT, etc.)
+- Accepts only PDF uploads from the client and server-side validation
+- Uploaded files must match the expected PDF header and open successfully in PyMuPDF
 - File extension is preserved in the stored filename
 - Document ID is generated using SHA256 hash of file contents
+- The backend enforces a maximum file size configured through `MAX_FILE_SIZE`
 
 ## Technology Stack
 
@@ -100,6 +104,7 @@ Notes:
 - AI Runtime: Ollama
 - Model: Phi-4 Mini
 - Database: SQLite
+- Document Validation: PyMuPDF
 - Document Storage: Local filesystem
 - Containerization: Docker Compose
 
@@ -109,10 +114,12 @@ The backend requires the following environment variables in a `.env` file:
 
 ```env
 MODEL_API_URL=http://localhost:11434
-MODEL_NAME=phi
-MESSAGE_THRESHOLD=3
+MODEL_NAME=phi4-mini:latest
+MESSAGE_THRESHOLD=5
 DOCUMENT_STORAGE_TYPE=local
-DOCUMENT_STORAGE_PATH=./backend/storage
+DOCUMENT_STORAGE_PATH=./storage/documents
+ALLOWED_CONTENT_TYPE=application/pdf
+MAX_FILE_SIZE=20971520
 ```
 
 - `MODEL_API_URL`: The URL of the Ollama API server
@@ -120,6 +127,8 @@ DOCUMENT_STORAGE_PATH=./backend/storage
 - `MESSAGE_THRESHOLD`: Number of messages before triggering certain backend actions
 - `DOCUMENT_STORAGE_TYPE`: Storage backend type (currently supports "local")
 - `DOCUMENT_STORAGE_PATH`: Local directory path for storing uploaded documents
+- `ALLOWED_CONTENT_TYPE`: Restricts uploaded documents to PDF content type
+- `MAX_FILE_SIZE`: Maximum accepted PDF size in bytes (default: 20 MB)
 
 ## Architecture
 
@@ -128,8 +137,10 @@ The application follows a simple three-layer structure:
 1. Frontend
    - Handles user input and displays chatbot responses
    - Stores recents in local storage and calls the restore history API for selected chats
+   - Provides a PDF upload button in the chat footer for document ingestion
 2. Backend
    - Exposes REST APIs and coordinates chat requests
+   - Validates uploaded PDFs before storing them locally
    - Persists conversation / message records in SQLite
 3. AI Layer
    - Runs the language model locally using Ollama

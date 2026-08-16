@@ -29,6 +29,8 @@ The current interface includes:
 - a loading state while the backend is generating a response
 - auto-scrolling to the latest message in the conversation
 - a footer input area for sending new prompts
+- a PDF upload button in the footer that opens a file picker and uploads a document to the backend
+- a subtle PDF-only hint so the user knows only PDF files are accepted
 - a local recent-chat list that is refreshed after every successful first-response title payload
 - backend history fetch and replay when the user selects one of the recent chats from the sidebar
 
@@ -41,7 +43,9 @@ The current interface includes:
 5. The frontend stores the backend `conversation_id` in local storage and reuses it for subsequent requests.
 6. The backend returns the AI-generated response text and an optional title payload for a fresh conversation.
 7. The frontend renders the assistant reply and updates the recent-chat list from the response payload when the title is available.
-8. Selecting a recent chat calls the restore-history API and repopulates the conversation messages from the backend.
+8. The user can also upload a PDF through the plus button in the footer, which triggers a multipart upload to `/api/documents`.
+9. The upload flow validates the file type client side and the backend enforces PDF-only validation before storing the file.
+10. Selecting a recent chat calls the restore-history API and repopulates the conversation messages from the backend.
 
 ## Key frontend files
 
@@ -50,8 +54,8 @@ The current interface includes:
 - `src/components/Sidebar.tsx` — renders the recent-chat rail and new-chat control
 - `src/components/Conversation.tsx` — renders the conversation list and loading indicator
 - `src/components/Header.tsx` — top branding area
-- `src/components/Footer.tsx` — input and send controls
-- `src/services/api.ts` — API integration layer for chat requests and conversation history retrieval
+- `src/components/Footer.tsx` — input, send controls, and PDF upload button
+- `src/services/api.ts` — API integration layer for chat requests, conversation history retrieval, and document upload requests
 - `src/components/types.ts` — shared frontend message and recent-chat interfaces
 
 ## Data flow and browser state
@@ -77,4 +81,4 @@ npm run build
 
 ## Notes
 
-This frontend is intentionally focused on a lightweight chat UI rather than a generic starter template. The current implementation is a practical conversational interface for an AI assistant, with a direct connection to the FastAPI backend, restore support for old conversations, and a title-driven recent-chat model that now follows the API response contract.
+This frontend is intentionally focused on a lightweight chat UI rather than a generic starter template. The current implementation is a practical conversational interface for an AI assistant, with a direct connection to the FastAPI backend, restore support for old conversations, a title-driven recent-chat model that follows the API response contract, and a PDF upload workflow that supports document ingestion into the backend storage layer.

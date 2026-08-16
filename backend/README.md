@@ -16,8 +16,10 @@ The current backend implementation includes:
 - streaming model requests to the configured local AI endpoint
 - returning a structured JSON response with `response`, `conversation_id`, and an optional `title`
 - document upload endpoint for storing files with multipart form-data support
+- strict PDF-only validation before storage, including content type checks, PDF signature verification, and PyMuPDF parsing validation
+- max-file-size enforcement using configuration-based validation
 - document persistence with SHA256-based ID generation and file extension preservation
-- settings management via environment variables for model URL, model name, message threshold, and document storage configuration
+- settings management via environment variables for model URL, model name, message threshold, document storage configuration, and PDF validation limits
 
 ## Main request flow
 
@@ -50,12 +52,14 @@ The current service layer supports a title-only pipeline that is intentionally n
 The document upload feature follows a layered architecture:
 
 1. The frontend sends a multipart file upload to `POST /api/documents`.
-2. The endpoint uses dependency injection to obtain the `DocumentService` instance via `get_document_service()`.
-3. `get_document_service()` returns a service configured with storage initialized through `get_document_storage()`.
-4. `get_document_storage()` reads the `DOCUMENT_STORAGE_TYPE` setting and instantiates the appropriate storage backend (currently only `LocalDocStorage`).
-5. `DocumentService.upload_document()` reads the multipart file, generates a SHA256-based ID, preserves the file extension, and calls `storage.save()`.
-6. The storage implementation persists the file to disk at `{DOCUMENT_STORAGE_PATH}/{document_id_with_extension}`.
-7. The generated document ID (with file extension) is returned to the frontend as JSON.
+2. The endpoint calls `validate_pdf(file)` before any storage logic is executed.
+3. The validator checks the file content type, enforces the configured max size, confirms the `%PDF-` signature is present, and opens the file with PyMuPDF to confirm it is a valid PDF.
+4. The endpoint uses dependency injection to obtain the `DocumentService` instance via `get_document_service()`.
+5. `get_document_service()` returns a service configured with storage initialized through `get_document_storage()`.
+6. `get_document_storage()` reads the `DOCUMENT_STORAGE_TYPE` setting and instantiates the appropriate storage backend (currently only `LocalDocStorage`).
+7. `DocumentService.upload_document()` reads the multipart file, generates a SHA256-based ID, preserves the file extension, and calls `storage.save()`.
+8. The storage implementation persists the file to disk at `{DOCUMENT_STORAGE_PATH}/{document_id_with_extension}`.
+9. The generated document ID (with file extension) is returned to the frontend as JSON.
 
 ## API surface
 
@@ -92,9 +96,12 @@ Example response:
 ```
 
 Notes:
-- Accepts any file type (PDF, TXT, DOCX, etc.)
+- Only PDF files are accepted
+- The backend validates both the MIME value and the PDF file signature before storing
+- Files must open successfully in PyMuPDF or the upload is rejected
 - File extension is preserved in the stored document ID
 - Document ID is generated using SHA256 hash of file contents
+- Maximum upload size is enforced via `MAX_FILE_SIZE`
 
 ## Key backend files
 
@@ -104,10 +111,11 @@ Notes:
 - `app/services/chatservice.py` — conversation logic, title classification, title generation, and model streaming integration
 - `app/services/summaryservice.py` — conversation-summary support for larger histories
 - `app/services/documentservice.py` — document upload and ID generation logic
+- `app/validation/pdf_validator.py` — PDF validation checks for MIME, size, header signature, and PyMuPDF readability
 - `app/storage/document_storage.py` — abstract storage interface
 - `app/storage/local_doc_storage.py` — local filesystem storage implementation
 - `app/dependencies/document_dependencies.py` — dependency injection setup for document storage and service initialization
-- `app/config.py` — environment-based settings for model and document storage configuration
+- `app/config.py` — environment-based settings for model, document storage, and PDF validation configuration
 - `app/db/database.py` — SQLite initialization and connection management
 - `app/db/conversationdao.py` — conversation title and message CRUD helpers
 
@@ -117,10 +125,12 @@ The backend expects the following environment variables in a `.env` file:
 
 ```env
 MODEL_API_URL=http://localhost:11434
-MODEL_NAME=phi
-MESSAGE_THRESHOLD=3
+MODEL_NAME=phi4-mini:latest
+MESSAGE_THRESHOLD=5
 DOCUMENT_STORAGE_TYPE=local
-DOCUMENT_STORAGE_PATH=./backend/storage
+DOCUMENT_STORAGE_PATH=./storage/documents
+ALLOWED_CONTENT_TYPE=application/pdf
+MAX_FILE_SIZE=20971520
 ```
 
 - `MODEL_API_URL` — URL of the Ollama API server
@@ -128,6 +138,8 @@ DOCUMENT_STORAGE_PATH=./backend/storage
 - `MESSAGE_THRESHOLD` — Number of messages before triggering conversation summarization
 - `DOCUMENT_STORAGE_TYPE` — Storage backend type (currently supports "local")
 - `DOCUMENT_STORAGE_PATH` — Local directory for storing uploaded documents
+- `ALLOWED_CONTENT_TYPE` — Restricts uploads to PDF content type
+- `MAX_FILE_SIZE` — Maximum accepted document size, in bytes (default: 20 MB)
 
 ## Development commands
 
