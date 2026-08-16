@@ -145,7 +145,7 @@ const ChatLayout = () => {
                     <main className="flex-1 min-h-0">
                         <Conversation items={messages} isLoading={isLoading} />
                     </main>
-                    <Footer onSend={sendMessage} onUploadDocument={uploadDocument} />
+                    <Footer onSend={sendMessage} onUploadDocument={uploadDocument} isUploadEnabled={false} />
                 </section>
             </div>
         </div>

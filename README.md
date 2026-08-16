@@ -20,7 +20,7 @@ The application is organized around a simple but practical runtime model:
 - A new chat action that clears the active in-memory message list and resets the current conversation id
 - Conversation restoration through `GET /api/chat/history/{conversation_id}` so the UI can continue a selected chat from the stored backend history
 - Request/response handling through `POST /api/chat/message`
-- PDF upload from the chat footer using a file picker and multipart form submission
+- PDF upload support is implemented in the backend and UI code, but the upload control is intentionally disabled in the current app until the full RAG flow is ready
 - Strict PDF-only validation on the backend, including file type, signature header, and PyMuPDF parsing checks
 - Conversation-aware history retrieval and message persistence through SQLite
 - A meaningful-request title gate: the backend checks whether a first prompt is trivial before asking the title LLM for a conversation title
@@ -137,7 +137,7 @@ The application follows a simple three-layer structure:
 1. Frontend
    - Handles user input and displays chatbot responses
    - Stores recents in local storage and calls the restore history API for selected chats
-   - Provides a PDF upload button in the chat footer for document ingestion
+   - Keeps the PDF upload flow available in code, but currently disables the upload button while the RAG feature is unfinished
 2. Backend
    - Exposes REST APIs and coordinates chat requests
    - Validates uploaded PDFs before storing them locally
@@ -198,6 +198,7 @@ The frontend will be available at:
 - The frontend stores `conversation_id` in local storage and reuses it for subsequent chat requests.
 - Recent chats are kept as a browser-side list of titles and IDs and are restored through the history API.
 - Conversation titles are read from the backend response where available and pushed into the recent-chat list instead of trying to infer them from the client-side request text.
+- The PDF upload feature remains implemented as a backend/frontend capability, but the control is disabled in the current UI until the full RAG workflow is ready.
 - The backend is built using FastAPI for low-latency API responses.
 - Ollama provides a lightweight local deployment path for running the AI model without external cloud dependencies.
 
