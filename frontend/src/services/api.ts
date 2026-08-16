@@ -73,3 +73,26 @@ export const sendMessageAPI = async (input: Message): Promise<Message> => {
         };
     }
 };
+
+export const uploadDocumentAPI = async (file: File): Promise<{ document_id: string } | null> => {
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch('http://localhost:8000/api/documents', {
+            method: 'POST',
+            body: formData,
+            signal: AbortSignal.timeout(180000)
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || `Request failed with status ${response.status}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error uploading document:', error);
+        return null;
+    }
+};

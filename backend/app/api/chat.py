@@ -44,3 +44,4 @@ async def get_chat(
     logger.info(f"Received message: {payload.message} with conversation_id: {payload.conversation_id}")
     chat_request = ChatRequest(message=payload.message, conversation_id=payload.conversation_id, settings=settings)
     return await chat_request.getModelResponse()
+

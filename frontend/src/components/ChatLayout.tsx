@@ -3,7 +3,7 @@ import Footer from "./Footer";
 import Conversation from "./Conversation";
 import { useState } from "react";
 import type { Message, RecentChat } from "./types";
-import { sendMessageAPI, getConversationHistoryAPI } from "../services/api";
+import { sendMessageAPI, getConversationHistoryAPI, uploadDocumentAPI } from "../services/api";
 import { useEffect } from "react";
 import Sidebar from "./Sidebar";
 
@@ -119,6 +119,14 @@ const ChatLayout = () => {
 
     };
 
+    const uploadDocument = async (file: File) => {
+        const uploaded = await uploadDocumentAPI(file);
+
+        if (!uploaded) {
+            throw new Error('Document upload failed');
+        }
+    };
+
 
     return (
         <div className="flex justify-center h-screen bg-slate-100">
@@ -137,7 +145,7 @@ const ChatLayout = () => {
                     <main className="flex-1 min-h-0">
                         <Conversation items={messages} isLoading={isLoading} />
                     </main>
-                    <Footer onSend={sendMessage} />
+                    <Footer onSend={sendMessage} onUploadDocument={uploadDocument} isUploadEnabled={false} />
                 </section>
             </div>
         </div>

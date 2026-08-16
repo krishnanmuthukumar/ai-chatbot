@@ -20,6 +20,8 @@ The application is organized around a simple but practical runtime model:
 - A new chat action that clears the active in-memory message list and resets the current conversation id
 - Conversation restoration through `GET /api/chat/history/{conversation_id}` so the UI can continue a selected chat from the stored backend history
 - Request/response handling through `POST /api/chat/message`
+- PDF upload support is implemented in the backend and UI code, but the upload control is intentionally disabled in the current app until the full RAG flow is ready
+- Strict PDF-only validation on the backend, including file type, signature header, and PyMuPDF parsing checks
 - Conversation-aware history retrieval and message persistence through SQLite
 - A meaningful-request title gate: the backend checks whether a first prompt is trivial before asking the title LLM for a conversation title
 - Optional title generation that never blocks the main assistant response path if title generation fails
@@ -66,6 +68,35 @@ GET /api/chat/history/{conversation_id}
 
 This endpoint returns a history payload containing the conversation id and role-based message objects that the frontend can use to repopulate the chat window.
 
+### Upload a document
+
+```text
+POST /api/documents
+```
+
+Request: Multipart form data with a single file field
+
+```
+Content-Type: multipart/form-data
+file: <binary file data>
+```
+
+Response:
+
+```json
+{
+  "document_id": "abc123def456..."
+}
+```
+
+Notes:
+
+- Accepts only PDF uploads from the client and server-side validation
+- Uploaded files must match the expected PDF header and open successfully in PyMuPDF
+- File extension is preserved in the stored filename
+- Document ID is generated using SHA256 hash of file contents
+- The backend enforces a maximum file size configured through `MAX_FILE_SIZE`
+
 ## Technology Stack
 
 - Frontend: React, TypeScript, Vite
@@ -73,7 +104,31 @@ This endpoint returns a history payload containing the conversation id and role-
 - AI Runtime: Ollama
 - Model: Phi-4 Mini
 - Database: SQLite
+- Document Validation: PyMuPDF
+- Document Storage: Local filesystem
 - Containerization: Docker Compose
+
+## Environment Configuration
+
+The backend requires the following environment variables in a `.env` file:
+
+```env
+MODEL_API_URL=http://localhost:11434
+MODEL_NAME=phi4-mini:latest
+MESSAGE_THRESHOLD=5
+DOCUMENT_STORAGE_TYPE=local
+DOCUMENT_STORAGE_PATH=./storage/documents
+ALLOWED_CONTENT_TYPE=application/pdf
+MAX_FILE_SIZE=20971520
+```
+
+- `MODEL_API_URL`: The URL of the Ollama API server
+- `MODEL_NAME`: The model identifier to use (e.g., phi, mistral, llama2)
+- `MESSAGE_THRESHOLD`: Number of messages before triggering certain backend actions
+- `DOCUMENT_STORAGE_TYPE`: Storage backend type (currently supports "local")
+- `DOCUMENT_STORAGE_PATH`: Local directory path for storing uploaded documents
+- `ALLOWED_CONTENT_TYPE`: Restricts uploaded documents to PDF content type
+- `MAX_FILE_SIZE`: Maximum accepted PDF size in bytes (default: 20 MB)
 
 ## Architecture
 
@@ -82,8 +137,10 @@ The application follows a simple three-layer structure:
 1. Frontend
    - Handles user input and displays chatbot responses
    - Stores recents in local storage and calls the restore history API for selected chats
+   - Keeps the PDF upload flow available in code, but currently disables the upload button while the RAG feature is unfinished
 2. Backend
    - Exposes REST APIs and coordinates chat requests
+   - Validates uploaded PDFs before storing them locally
    - Persists conversation / message records in SQLite
 3. AI Layer
    - Runs the language model locally using Ollama
@@ -93,10 +150,14 @@ The application follows a simple three-layer structure:
 ```text
 ai-chatbot/
 ├── backend/        # FastAPI application
+│   ├── app/        # Application code
+│   └── storage/    # Document storage 
 ├── frontend/       # React + Vite frontend
 ├── docker/         # Docker setup for local model serving
 └── README.md       # Project overview
 ```
+
+Note: The `backend/storage/` directory is ignored in `.gitignore` to prevent storing user-uploaded documents in version control.
 
 ## Quick Start
 
@@ -137,6 +198,7 @@ The frontend will be available at:
 - The frontend stores `conversation_id` in local storage and reuses it for subsequent chat requests.
 - Recent chats are kept as a browser-side list of titles and IDs and are restored through the history API.
 - Conversation titles are read from the backend response where available and pushed into the recent-chat list instead of trying to infer them from the client-side request text.
+- The PDF upload feature remains implemented as a backend/frontend capability, but the control is disabled in the current UI until the full RAG workflow is ready.
 - The backend is built using FastAPI for low-latency API responses.
 - Ollama provides a lightweight local deployment path for running the AI model without external cloud dependencies.
 
